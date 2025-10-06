@@ -25,7 +25,8 @@ COPY apps/*/package.json ./apps/*/
 COPY libraries/*/package.json ./libraries/*/
 
 # Install dependencies (including dev dependencies for build)
-RUN pnpm install --no-frozen-lockfile
+# Skip postinstall scripts to avoid Prisma generation before source code is copied
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Copy source code
 COPY . .
