@@ -1,20 +1,38 @@
-# Railway GitHub Integration Setup
+# Railway Deployment Setup
 
 ## Overview
-Instead of using GitHub Actions to deploy to Railway, we'll use Railway's native GitHub integration, which is the recommended approach.
+Since Railway's GitHub integration might not be available in the current interface, we'll use alternative deployment methods.
 
-## Setup Steps
+## Deployment Options
 
-### 1. Connect GitHub Repository to Railway
+### Option 1: Manual Deployment (Recommended)
+
+Use the provided deployment script:
+
+```bash
+# Make sure you're logged in to Railway
+railway login
+
+# Run the deployment script
+./deploy.sh
+```
+
+### Option 2: Railway CLI Direct Deployment
+
+```bash
+# Deploy directly using Railway CLI
+railway up --detach
+```
+
+### Option 3: Check for GitHub Integration
+
+If you want to try the GitHub integration:
 
 1. Go to [Railway Dashboard](https://railway.app/dashboard)
 2. Navigate to your `postiz-app` project
 3. Click on the **Settings** tab
-4. Scroll down to **Source Repositories**
-5. Click **Connect GitHub Repository**
-6. Select your repository: `tindevelopers/postiz-app`
-7. Choose the branch: `main`
-8. Click **Connect**
+4. Look for **Source Repositories** or **Integrations** section
+5. If available, connect your GitHub repository: `tindevelopers/postiz-app`
 
 ### 2. Configure Auto-Deploy
 
