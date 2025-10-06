@@ -17,9 +17,19 @@ if ! railway whoami &> /dev/null; then
     exit 1
 fi
 
+# Check current project status
+echo "📋 Current project status:"
+railway status
+
 # Deploy to Railway
 echo "📦 Deploying to Railway..."
 railway up --detach
 
 echo "✅ Deployment initiated! Check Railway dashboard for status."
-echo "🌐 Your app will be available at: https://postiz-app.railway.app"
+echo "🌐 Your app will be available at: https://postiz-app-clean.railway.app"
+echo ""
+echo "📝 Note: Add databases through Railway UI to avoid creating duplicates:"
+echo "   1. Go to Railway dashboard"
+echo "   2. Click '+' to add PostgreSQL database"
+echo "   3. Click '+' to add Redis database"
+echo "   4. Railway will automatically provide DATABASE_URL and REDIS_URL"
