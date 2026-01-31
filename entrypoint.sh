@@ -20,6 +20,9 @@ echo "=== Railway Entrypoint Wrapper ==="
 echo "Original Railway PORT: ${RAILWAY_ORIGINAL_PORT}"
 echo "Setting PORT=3000 for backend"
 echo "nginx will listen on 5000 (hardcoded in config)"
+echo "TEMPORAL_ADDRESS: ${TEMPORAL_ADDRESS}"
+echo "DATABASE_URL: ${DATABASE_URL:0:50}..."
+echo "REDIS_URL: ${REDIS_URL:0:30}..."
 echo "=================================="
 
 # Create volume subdirectories if they don't exist
