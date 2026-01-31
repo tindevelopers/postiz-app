@@ -10,7 +10,8 @@ healthcheckPath = "/"
 healthcheckTimeout = 300
 
 [env]
-PORT = "5000"
+PORT = "3000"
+BACKEND_PORT = "3000"
 # Core app settings
 IS_GENERAL = "true"
 DISABLE_REGISTRATION = "false"
@@ -20,9 +21,9 @@ BACKEND_INTERNAL_URL = "http://localhost:3000"
 STORAGE_PROVIDER = "local"
 UPLOAD_DIRECTORY = "/data/uploads"
 NEXT_PUBLIC_UPLOAD_DIRECTORY = "/data/uploads"
-# Temporal: required when using Railway Temporal Starter so backend/orchestrator can start and login works.
-# Use your Temporal service's private hostname (replace "temporal" if your service has a different name).
-TEMPORAL_ADDRESS = "temporal.railway.internal:7233"
+# Temporal: CRITICAL - Point to the Temporal Frontend service (standalone Temporal template)
+# DO NOT use "temporal.railway.internal" (that's the old Temporal Starter Package)
+TEMPORAL_ADDRESS = "temporal-frontend.railway.internal:7233"
 
 # Volumes for persistent storage
 # Railway allows only one volume per service on most plans
