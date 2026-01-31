@@ -5,14 +5,14 @@
 # But Postiz backend reads PORT and uses it instead of its default 3000
 # This causes a conflict since nginx is hardcoded to listen on 5000
 #
-# Solution: Unset PORT so backend uses default 3000, nginx stays on 5000
+# Solution: Use BACKEND_PORT for backend, nginx stays on 5000
 # Railway will connect to the EXPOSE'd port 5000
 
 # Save PORT for logging/debugging if needed
 export RAILWAY_ORIGINAL_PORT="${PORT:-}"
 
-# Unset PORT so the backend uses its default (3000)
-unset PORT
+# Backend uses BACKEND_PORT (set to 3000 in Railway variables)
+# Keep PORT for nginx (5000)
 
 echo "=== Railway Entrypoint Wrapper ==="
 echo "Original PORT: ${RAILWAY_ORIGINAL_PORT}"
