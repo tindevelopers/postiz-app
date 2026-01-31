@@ -12,15 +12,27 @@ healthcheckTimeout = 300
 [env]
 PORT = "3000"
 BACKEND_PORT = "3000"
+
+# CRITICAL: Database connections (required for prisma-db-push during startup)
+# These must reference your Railway database services
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+REDIS_URL = "${{Redis.REDIS_URL}}"
+
+# CRITICAL: JWT Secret for authentication (generate a random string)
+# Set this in Railway UI: Variables → JWT_SECRET → [random 32+ character string]
+# JWT_SECRET = "your-random-secret-here"
+
 # Core app settings
 IS_GENERAL = "true"
 DISABLE_REGISTRATION = "false"
 RUN_CRON = "true"
 BACKEND_INTERNAL_URL = "http://localhost:3000"
+
 # Storage
 STORAGE_PROVIDER = "local"
 UPLOAD_DIRECTORY = "/data/uploads"
 NEXT_PUBLIC_UPLOAD_DIRECTORY = "/data/uploads"
+
 # Temporal: CRITICAL - Point to the Temporal Frontend service (standalone Temporal template)
 # DO NOT use "temporal.railway.internal" (that's the old Temporal Starter Package)
 TEMPORAL_ADDRESS = "temporal-frontend.railway.internal:7233"
