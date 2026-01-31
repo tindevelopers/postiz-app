@@ -20,6 +20,14 @@ echo "PORT unset - backend will use default 3000"
 echo "nginx listening on 5000"
 echo "=================================="
 
+# Create volume subdirectories if they don't exist
+# Railway allows only one volume per service, so we use /data with subdirectories
+if [ -d "/data" ]; then
+    echo "Creating volume subdirectories..."
+    mkdir -p /data/uploads /data/config
+    echo "Volume structure ready: /data/{uploads,config}"
+fi
+
 # Execute the original entrypoint from the base image
 # Base image uses: ENTRYPOINT ["docker-entrypoint.sh"] CMD ["sh","-c","nginx && pnpm run pm2"]
 exec docker-entrypoint.sh "$@"
