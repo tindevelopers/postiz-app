@@ -140,7 +140,7 @@ A **502 Bad Gateway** on the signup page usually means Railway’s proxy (nginx)
    **Fix:** In the Railway dashboard → your Postiz service → **Variables**, **remove** `TEMPORAL_ADDRESS` entirely (or leave it unset). Do not set it to `temporal:7233` unless you have Temporal deployed elsewhere and set the real URL.
 
 2. **Database or Redis unreachable**  
-   Signup writes to the database. If `DATABASE_URL` or `REDIS_URL` is wrong, missing, or the linked Postgres/Redis service is down, the backend can error or time out and the proxy returns 502.
+   Signup and login both use the database. If `DATABASE_URL` or `REDIS_URL` is wrong, missing, or the linked Postgres/Redis service is down, the backend can error or time out and the proxy returns 502.
 
    **Fix:** Confirm you have PostgreSQL and Redis services in the same project, and that variables use Railway references: `${{Postgres.DATABASE_URL}}` and `${{Redis.REDIS_URL}}`. Check that those services are running and reachable.
 
