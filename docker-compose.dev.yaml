@@ -12,7 +12,6 @@ services:
       POSTGRES_PASSWORD: postiz-local-pwd
       POSTGRES_USER: postiz-local
       POSTGRES_DB: postiz-db-local
-      TEMPORAL_ADDRESS: "temporal:7233"
     volumes:
       - postgres-volume:/var/lib/postgresql/data
     ports:
@@ -54,36 +53,25 @@ services:
       - postiz-network
     restart: always
 
-  temporal-elasticsearch:
-    container_name: temporal-elasticsearch
-    image: elasticsearch:7.17.27
-    environment:
-      - cluster.routing.allocation.disk.threshold_enabled=true
-      - cluster.routing.allocation.disk.watermark.low=512mb
-      - cluster.routing.allocation.disk.watermark.high=256mb
-      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m
-      - xpack.security.enabled=false
-    networks:
-      - temporal-network
-    expose:
-      - 9200
-    volumes:
-      - /var/lib/elasticsearch/data
-
   temporal-postgresql:
     container_name: temporal-postgresql
     image: postgres:16
+    restart: always
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
+      POSTGRES_DB: temporal
     networks:
       - temporal-network
     expose:
       - 5432
     volumes:
-      - /var/lib/postgresql/data
+      - temporal-postgres-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U temporal -d temporal
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   temporal:
     container_name: temporal
@@ -91,8 +79,8 @@ services:
       - "7233:7233"
     image: temporalio/auto-setup:1.28.1
     depends_on:
-      - temporal-postgresql
-      - temporal-elasticsearch
+      temporal-postgresql:
+        condition: service_healthy
     environment:
       - DB=postgres12
       - DB_PORT=5432
@@ -100,9 +88,7 @@ services:
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=temporal-postgresql
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-      - ENABLE_ES=true
-      - ES_SEEDS=temporal-elasticsearch
-      - ES_VERSION=v7
+      - ENABLE_ES=false
       - TEMPORAL_NAMESPACE=default
     networks:
       - temporal-network
@@ -110,19 +96,6 @@ services:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     labels:
       kompose.volume.type: configMap
-
-  temporal-admin-tools:
-    container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
-    networks:
-      - temporal-network
-    stdin_open: true
-    depends_on:
-      - temporal
-    tty: true
 
   temporal-ui:
     container_name: temporal-ui
@@ -134,10 +107,14 @@ services:
       - temporal-network
     ports:
       - "8080:8080"
+    depends_on:
+      - temporal
 
 volumes:
   redisinsight:
   postgres-volume:
+    external: false
+  temporal-postgres-volume:
     external: false
 
 networks:

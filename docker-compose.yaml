@@ -1,6 +1,6 @@
 services:
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:latest
+    image: ghcr.io/gitroomhq/postiz-app:v2.12.1
     container_name: postiz
     restart: always
     environment:
@@ -122,6 +122,8 @@ services:
         condition: service_healthy
       postiz-redis:
         condition: service_healthy
+      temporal:
+        condition: service_started
 
   postiz-postgres:
     image: postgres:17-alpine
@@ -154,18 +156,8 @@ services:
     networks:
       - postiz-network
 
-  # For Application Monitoring / Debugging
-  spotlight:
-    pull_policy: always
-    container_name: spotlight
-    ports:
-      - 8969:8969/tcp
-    image: ghcr.io/getsentry/spotlight:latest
-    networks:
-      - postiz-network
-
   # -----------------------
-  # Temporal Stack
+  # Temporal Stack (server + Postgres + Elasticsearch + UI)
   # -----------------------
   temporal-elasticsearch:
     container_name: temporal-elasticsearch
@@ -183,20 +175,27 @@ services:
     expose:
       - 9200
     volumes:
-      - /var/lib/elasticsearch/data
+      - temporal-elasticsearch-volume:/usr/share/elasticsearch/data
 
   temporal-postgresql:
     container_name: temporal-postgresql
     image: postgres:16
+    restart: always
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
+      POSTGRES_DB: temporal
     networks:
       - temporal-network
     expose:
       - 5432
     volumes:
-      - /var/lib/postgresql/data
+      - temporal-postgres-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U temporal -d temporal
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   temporal:
     container_name: temporal
@@ -204,8 +203,10 @@ services:
       - '7233:7233'
     image: temporalio/auto-setup:1.28.1
     depends_on:
-      - temporal-postgresql
-      - temporal-elasticsearch
+      temporal-postgresql:
+        condition: service_healthy
+      temporal-elasticsearch:
+        condition: service_started
     environment:
       - DB=postgres12
       - DB_PORT=5432
@@ -224,19 +225,6 @@ services:
     labels:
       kompose.volume.type: configMap
 
-  temporal-admin-tools:
-    container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
-    networks:
-      - temporal-network
-    stdin_open: true
-    depends_on:
-      - temporal
-    tty: true
-
   temporal-ui:
     container_name: temporal-ui
     image: temporalio/ui:2.34.0
@@ -247,6 +235,8 @@ services:
       - temporal-network
     ports:
       - '8080:8080'
+    depends_on:
+      - temporal
 
 volumes:
   postgres-volume:
@@ -259,6 +249,12 @@ volumes:
     external: false
 
   postiz-uploads:
+    external: false
+
+  temporal-postgres-volume:
+    external: false
+
+  temporal-elasticsearch-volume:
     external: false
 
 networks:

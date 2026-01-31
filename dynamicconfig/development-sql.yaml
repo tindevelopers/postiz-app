@@ -4,3 +4,21 @@ limit.maxIDLength:
 system.forceSearchAttributesCacheRefreshOnRead:
   - value: true # Dev setup only. Please don't turn this on in production.
     constraints: {}
+limit.numPendingChildExecutions:
+  - value: 50000
+    constraints: {}
+limit.numPendingActivities:
+  - value: 50000
+    constraints: {}
+limit.numPendingSignals:
+  - value: 50000
+    constraints: {}
+limit.numPendingCancelRequests:
+  - value: 50000
+    constraints: {}
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+    constraints: {}
+frontend.maxSearchAttributesPerWorkflow:
+  - value: 20
+    constraints: {}

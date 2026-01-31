@@ -48,7 +48,7 @@ Open your website on https://localhost:4007
 ```yaml
 services:
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:latest
+    image: ghcr.io/gitroomhq/postiz-app:v2.12.1
     container_name: postiz
     restart: always
     environment:
@@ -169,6 +169,8 @@ services:
         condition: service_healthy
       postiz-redis:
         condition: service_healthy
+      temporal:
+        condition: service_started
 
   postiz-postgres:
     image: postgres:17-alpine
@@ -201,37 +203,9 @@ services:
     networks:
       - postiz-network
 
-  # For Application Monitoring / Debugging
-  spotlight:
-    pull_policy: always
-    container_name: spotlight
-    ports:
-      - 8969:8969/tcp
-    image: ghcr.io/getsentry/spotlight:latest
-    networks:
-      - postiz-network
-
   # -----------------------
-  # Temporal Stack
+  # Temporal Stack (minimal: server + Postgres + UI; no Elasticsearch)
   # -----------------------
-  temporal-elasticsearch:
-    container_name: temporal-elasticsearch
-    image: elasticsearch:7.17.27
-    environment:
-      - cluster.routing.allocation.disk.threshold_enabled=true
-      - cluster.routing.allocation.disk.watermark.low=512mb
-      - cluster.routing.allocation.disk.watermark.high=256mb
-      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m
-      - xpack.security.enabled=false
-    networks:
-      - temporal-network
-    expose:
-      - 9200
-    volumes:
-      - /var/lib/elasticsearch/data
-
   temporal-postgresql:
     container_name: temporal-postgresql
     image: postgres:16
@@ -243,7 +217,12 @@ services:
     expose:
       - 5432
     volumes:
-      - /var/lib/postgresql/data
+      - temporal-postgres-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U temporal
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   temporal:
     container_name: temporal
@@ -251,8 +230,8 @@ services:
       - '7233:7233'
     image: temporalio/auto-setup:1.28.1
     depends_on:
-      - temporal-postgresql
-      - temporal-elasticsearch
+      temporal-postgresql:
+        condition: service_healthy
     environment:
       - DB=postgres12
       - DB_PORT=5432
@@ -260,9 +239,7 @@ services:
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=temporal-postgresql
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-      - ENABLE_ES=true
-      - ES_SEEDS=temporal-elasticsearch
-      - ES_VERSION=v7
+      - ENABLE_ES=false
       - TEMPORAL_NAMESPACE=default
     networks:
       - temporal-network
@@ -270,19 +247,6 @@ services:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     labels:
       kompose.volume.type: configMap
-
-  temporal-admin-tools:
-    container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
-    networks:
-      - temporal-network
-    stdin_open: true
-    depends_on:
-      - temporal
-    tty: true
 
   temporal-ui:
     container_name: temporal-ui
@@ -294,6 +258,8 @@ services:
       - temporal-network
     ports:
       - '8080:8080'
+    depends_on:
+      - temporal
 
 volumes:
   postgres-volume:
@@ -308,6 +274,9 @@ volumes:
   postiz-uploads:
     external: false
 
+  temporal-postgres-volume:
+    external: false
+
 networks:
   postiz-network:
     external: false
@@ -315,3 +284,46 @@ networks:
     driver: bridge
     name: temporal-network
 ```
+
+---
+
+## Pulling upstream changes safely
+
+If you use a fork of [postiz-app](https://github.com/gitroomhq/postiz-app) or deploy to Railway with the image `ghcr.io/gitroomhq/postiz-app:v2.12.1` (or another pinned tag), you can pull upstream changes without breaking your deploy by following these rules.
+
+### 1. Syncing your postiz-app fork with upstream (gitroomhq/postiz-app)
+
+**Safe for the deploy.** Railway (and this docker-compose setup) use the pre-built image; they do not build from your fork. You can update your fork with upstream at any time:
+
+```bash
+cd /path/to/postiz-app   # your fork
+git fetch upstream
+git merge upstream/main   # or: git rebase upstream/main
+git push origin main      # (and/or your railway branch)
+```
+
+This only updates your fork’s code. It does **not** change what is running until you change how you deploy (e.g. switch to building from that repo).
+
+### 2. When does “upstream” actually affect the running app?
+
+Only when you **rebuild/redeploy** and the image is pulled again. This setup pins to a version tag (e.g. `v2.12.1`), so you control when to upgrade; update the tag in the Dockerfile and docker-compose when you want a new release.
+
+To avoid that, **pin to a version tag** in your Dockerfile or `docker-compose.yml` and update only when you choose:
+
+```dockerfile
+  FROM ghcr.io/gitroomhq/postiz-app:v2.12.1
+```
+
+Or in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/gitroomhq/postiz-app:v2.12.1
+```
+
+Replace `v2.12.1` with the [release tag](https://github.com/gitroomhq/postiz-app/releases) you want. Update the tag when you’re ready to pull in a new upstream version.
+
+### 3. Pulling changes in this repo (postiz-docker-compose)
+
+If you add `upstream` = gitroomhq/postiz-docker-compose and merge, upstream might bring a different Dockerfile (e.g. one that builds from source). **Keep your current Dockerfile** (the one that only does `FROM ... postiz-app:v2.12.1` and creates `/uploads` and `/config`). Either don’t merge files that would overwrite the Dockerfile, or after merging run `git checkout --ours Dockerfile` and re-commit so your working Dockerfile is preserved.
+
+For more detail on Railway deployment and 502 troubleshooting, see [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md).

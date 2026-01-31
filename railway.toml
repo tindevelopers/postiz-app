@@ -20,5 +20,15 @@ BACKEND_INTERNAL_URL = "http://localhost:3000"
 STORAGE_PROVIDER = "local"
 UPLOAD_DIRECTORY = "/uploads"
 NEXT_PUBLIC_UPLOAD_DIRECTORY = "/uploads"
-# Disable Temporal for Railway (single-container deployment)
-# TEMPORAL_ADDRESS should be set only if you deploy Temporal separately
+# Temporal: required when using Railway Temporal Starter so backend/orchestrator can start and login works.
+# Use your Temporal service's private hostname (replace "temporal" if your service has a different name).
+TEMPORAL_ADDRESS = "temporal.railway.internal:7233"
+
+# Volumes for persistent storage
+[[volumes]]
+name = "uploads"
+mountPath = "/uploads"
+
+[[volumes]]
+name = "config"
+mountPath = "/config"
