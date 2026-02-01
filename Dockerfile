@@ -1,6 +1,12 @@
 # Railway deployment Dockerfile for Postiz (pinned version; update when upgrading)
 FROM ghcr.io/gitroomhq/postiz-app:v2.12.1
 
+# FIX: Patch cookie domain bug for Railway/PSL domains (GitHub issue #1143)
+# Railway domains (*.up.railway.app) are on the Public Suffix List, causing browsers
+# to reject cookies set for the domain. This patch forces cookies to use the full hostname.
+RUN find /app -name "subdomain.management.js" -type f -exec sed -i "s/return url\.domain! ? '\.' + url\.domain! : url\.hostname!;/return url.hostname!;/g" {} \; && \
+    echo "✅ Cookie domain patch applied for Railway PSL compatibility"
+
 # Create upload directory with proper permissions
 RUN mkdir -p /uploads /config && chmod 755 /uploads /config
 
