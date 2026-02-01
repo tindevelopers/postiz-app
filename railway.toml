@@ -10,12 +10,13 @@ healthcheckPath = "/"
 healthcheckTimeout = 300
 
 [env]
-PORT = "3000"
+PORT = "5000"
 BACKEND_PORT = "3000"
 
 # CRITICAL: Database connections (required for prisma-db-push during startup)
-# These must reference your Railway database services
-DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+# Service names must match exactly. Default: Postgis (mellow-energy). 
+# New project with Postgres? Override in Railway Dashboard: DATABASE_URL = ${{Postgres.DATABASE_URL}}
+DATABASE_URL = "${{Postgis.DATABASE_URL}}"
 REDIS_URL = "${{Redis.REDIS_URL}}"
 
 # CRITICAL: JWT Secret for authentication (generate a random string)
@@ -40,9 +41,8 @@ STORAGE_PROVIDER = "local"
 UPLOAD_DIRECTORY = "/data/uploads"
 NEXT_PUBLIC_UPLOAD_DIRECTORY = "/data/uploads"
 
-# Temporal: CRITICAL - Point to the Temporal Frontend service (standalone Temporal template)
-# DO NOT use "temporal.railway.internal" (that's the old Temporal Starter Package)
-TEMPORAL_ADDRESS = "temporal-frontend.railway.internal:7233"
+# Temporal: Connect to the Temporal Light service
+TEMPORAL_ADDRESS = "temporal.railway.internal:7233"
 
 # Volumes for persistent storage
 # Railway allows only one volume per service on most plans

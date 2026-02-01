@@ -1,6 +1,7 @@
 services:
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:v2.12.1
+    build: .
+    image: postiz-app:local
     container_name: postiz
     restart: always
     environment:

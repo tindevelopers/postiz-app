@@ -287,6 +287,199 @@ networks:
 
 ---
 
+## Railway Deployment
+
+This section covers deploying Postiz to Railway.app, including the correct Temporal template to use.
+
+### Prerequisites
+
+- Railway.app account
+- GitHub account (for code deployment)
+
+### Step 1: Deploy Temporal (Standalone Template)
+
+**CRITICAL:** Use the standalone **"Temporal"** template, NOT "Temporal Starter Package".
+
+1. Go to Railway → New Project → Deploy a Template
+2. Search for `temporal` in the template marketplace
+3. Select **"Temporal"** by Six (61+ deploys, 100% success rate)
+   - ✅ Description: "Open source durable execution platform (separate services + scaling)"
+   - ❌ **DO NOT** use "Temporal Starter Package" (has buggy Elasticsearch startup scripts)
+
+4. The Temporal template will deploy these services:
+   - **Temporal Frontend** - Main gRPC endpoint (port 7233)
+   - **Temporal History** - Workflow history service
+   - **Temporal Worker** - Background worker
+   - **Temporal UI** - Web interface for monitoring
+   - **Temporal Matching** - Task queue matching
+   - **Temporal Basic Auth** - Authentication proxy
+   - **Postgres-iBMg** - Dedicated Temporal database
+   - **Elasticsearch-lG_T** - Temporal search backend
+
+5. Wait for all Temporal services to deploy successfully (all showing "Online")
+
+### Step 2: Deploy Postiz
+
+1. Fork or deploy the Postiz repository to Railway
+2. Configure the following environment variables:
+
+```bash
+# === Required Settings
+MAIN_URL='https://your-postiz-app.up.railway.app'
+FRONTEND_URL='https://your-postiz-app.up.railway.app'
+NEXT_PUBLIC_BACKEND_URL='https://your-postiz-app.up.railway.app/api'
+JWT_SECRET='generate-a-random-string-here'
+DATABASE_URL='${{Postgres.DATABASE_URL}}'
+REDIS_URL='${{Redis.REDIS_URL}}'
+BACKEND_INTERNAL_URL='http://localhost:3000'
+
+# === CRITICAL: Temporal Configuration
+# Point to the Temporal Frontend service (NOT the old Temporal Starter)
+TEMPORAL_ADDRESS='temporal-frontend.railway.internal:7233'
+
+IS_GENERAL='true'
+DISABLE_REGISTRATION='false'
+
+# === Storage Settings (Railway requires single volume)
+STORAGE_PROVIDER='local'
+UPLOAD_DIRECTORY='/data/uploads'
+NEXT_PUBLIC_UPLOAD_DIRECTORY='/data/uploads'
+
+# === Port Configuration (fixes nginx/backend conflict)
+PORT='3000'
+BACKEND_PORT='3000'
+
+# === Developer Settings
+NX_ADD_PLUGINS='false'
+```
+
+### Step 3: Configure Railway Services
+
+#### Database Setup
+
+1. **PostgreSQL** (main Postiz database)
+   - Deploy: New Database → PostgreSQL
+   - Connect to Postiz via `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+
+2. **Redis**
+   - Deploy: New Database → Redis
+   - Connect to Postiz via `REDIS_URL=${{Redis.REDIS_URL}}`
+
+#### Volume Configuration
+
+Railway's free/hobby tier allows **one volume per service**. Configure a single volume:
+
+1. Go to Postiz service → Settings → Add Volume
+2. **Mount Path:** `/data`
+3. **Size:** 1GB (or adjust based on your needs)
+
+The entrypoint script automatically creates subdirectories:
+- `/data/uploads` - for uploaded media
+- `/data/config` - for configuration files
+
+### Step 4: Verify Deployment
+
+1. **Check Service Status**
+   - All services should show "Online" status
+   - Temporal services (8 total) should all be running
+   - Postiz should be running without 502/503 errors
+
+2. **Access Postiz**
+   - Navigate to your Postiz URL: `https://your-postiz-app.up.railway.app`
+   - You should see the registration/login page
+
+3. **Verify Temporal Connection**
+   - Check Postiz logs for Temporal worker connection messages
+   - No "Connection refused" or "Failed to connect" errors
+   - Orchestrator should successfully connect to `temporal-frontend.railway.internal:7233`
+
+### Common Issues & Solutions
+
+#### Issue: 502 Bad Gateway
+
+**Cause:** Port conflict between nginx (port 5000) and backend trying to use Railway's default PORT
+
+**Solution:** Explicitly set in environment variables:
+```bash
+PORT='3000'
+BACKEND_PORT='3000'
+```
+
+#### Issue: Temporal Connection Refused
+
+**Cause:** Using old Temporal Starter Package or wrong TEMPORAL_ADDRESS
+
+**Solution:**
+1. Deploy the standalone "Temporal" template (not Starter Package)
+2. Set `TEMPORAL_ADDRESS='temporal-frontend.railway.internal:7233'`
+3. Verify Temporal Frontend service is "Online" in Railway dashboard
+
+#### Issue: Database Schema Errors
+
+**Cause:** Temporal database not properly initialized
+
+**Solution:** With the standalone Temporal template, schema initialization is automatic. If issues persist:
+1. Check Temporal Frontend logs for initialization errors
+2. Verify Postgres-iBMg database is connected and healthy
+
+#### Issue: Volume Mount Issues
+
+**Cause:** Trying to mount multiple volumes (Railway limitation)
+
+**Solution:** Use single volume at `/data` with subdirectories created by entrypoint script
+
+### Railway Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Railway Project                    │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  ┌─────────────┐    ┌──────────────────────────┐   │
+│  │   Postiz    │───▶│  Temporal Frontend       │   │
+│  │  (Main App) │    │  :7233 (gRPC endpoint)   │   │
+│  └─────┬───────┘    └────────┬─────────────────┘   │
+│        │                     │                      │
+│        │                     ├─▶ Temporal History   │
+│        │                     ├─▶ Temporal Worker    │
+│  ┌─────▼──────┐             ├─▶ Temporal Matching  │
+│  │ PostgreSQL │             └─▶ Temporal UI         │
+│  │  (Main DB) │                                     │
+│  └────────────┘         ┌─────────────────────┐    │
+│                         │  Postgres-iBMg       │    │
+│  ┌────────────┐         │  (Temporal DB)       │    │
+│  │   Redis    │         └─────────────────────┘    │
+│  └────────────┘                                     │
+│                         ┌─────────────────────┐    │
+│  ┌────────────┐         │  Elasticsearch-lG_T  │    │
+│  │ /data Vol  │         │  (Temporal Search)   │    │
+│  │ (1GB)      │         └─────────────────────┘    │
+│  └────────────┘                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+### Key Differences: Railway vs Docker Compose
+
+| Aspect | Docker Compose | Railway |
+|--------|----------------|---------|
+| **Temporal** | Single `temporal` container | Separate scaled services (Frontend, History, Worker, etc.) |
+| **Volumes** | Multiple volumes supported | **One volume per service** - use `/data` with subdirectories |
+| **Networking** | Docker networks (`temporal-network`) | Private Railway networking (`.railway.internal`) |
+| **Port Management** | Direct port mapping | Automatic proxy - must set `PORT=3000` explicitly |
+| **Database** | Self-hosted containers | Managed Railway databases |
+| **Scaling** | Manual via `docker-compose scale` | Automatic via Railway |
+
+### Additional Resources
+
+For more detailed Railway deployment information and troubleshooting:
+- [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md) - Complete Railway deployment guide
+- [RAILWAY_NEW_PROJECT_DEPLOY.md](RAILWAY_NEW_PROJECT_DEPLOY.md) - Step-by-step guide for deploying to a **new** Railway project
+- Run `./validate-railway-deploy.sh` before deploying to verify services and config
+- [RAILWAY_COMPLETE_DEPLOY.md](RAILWAY_COMPLETE_DEPLOY.md) - Step-by-step deployment walkthrough
+- [QUICK_RAILWAY_SETUP.md](QUICK_RAILWAY_SETUP.md) - Quick start guide
+
+---
+
 ## Pulling upstream changes safely
 
 If you use a fork of [postiz-app](https://github.com/gitroomhq/postiz-app) or deploy to Railway with the image `ghcr.io/gitroomhq/postiz-app:v2.12.1` (or another pinned tag), you can pull upstream changes without breaking your deploy by following these rules.

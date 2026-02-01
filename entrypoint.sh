@@ -13,14 +13,21 @@
 export RAILWAY_ORIGINAL_PORT="${PORT:-}"
 
 # CRITICAL: Backend reads PORT env var to determine which port to listen on
-# Set it to 3000 so backend doesn't conflict with nginx (which uses 5000)
+# Railway sets PORT=5000 for healthcheck routing to nginx
+# We need backend on 3000 and nginx on 5000
+# Unset PORT first to force backend to use its default, then set it explicitly
+unset PORT
 export PORT=3000
+export BACKEND_PORT=3000
 
 echo "=== Railway Entrypoint Wrapper ==="
 echo "Original Railway PORT: ${RAILWAY_ORIGINAL_PORT}"
-echo "Setting PORT=3000 for backend"
+echo "Setting PORT=3000 and BACKEND_PORT=3000 for backend"
 echo "nginx will listen on 5000 (hardcoded in config)"
 echo "=================================="
+
+# Verify PORT is set correctly
+echo "Verification - PORT=$PORT, BACKEND_PORT=$BACKEND_PORT"
 
 # #region agent log
 # DEBUG MODE: Comprehensive logging for auth middleware failure
@@ -127,4 +134,5 @@ fi
 
 # Execute the original entrypoint from the base image
 # Base image uses: ENTRYPOINT ["docker-entrypoint.sh"] CMD ["sh","-c","nginx && pnpm run pm2"]
-exec docker-entrypoint.sh "$@"
+# Use env to explicitly pass PORT=3000 to override Railway's PORT=5000
+exec env PORT=3000 BACKEND_PORT=3000 docker-entrypoint.sh "$@"
