@@ -23,11 +23,11 @@ REDIS_URL = "${{Redis.REDIS_URL}}"
 # JWT_SECRET = "your-random-secret-here"
 
 # CRITICAL: URL Configuration (required for authentication/session cookies)
-# Railway automatically provides RAILWAY_PUBLIC_DOMAIN, use it for all public URLs
-MAIN_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}"
-FRONTEND_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}"
-NEXT_PUBLIC_BACKEND_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}/api"
-NEXTAUTH_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}"
+# These MUST be set in Railway UI to match your deployment domain:
+# - MAIN_URL = https://[your-railway-domain]
+# - FRONTEND_URL = https://[your-railway-domain]
+# - NEXT_PUBLIC_BACKEND_URL = https://[your-railway-domain]/api
+# - NEXTAUTH_URL = https://[your-railway-domain] (REQUIRED for session cookies!)
 
 # Core app settings
 IS_GENERAL = "true"
