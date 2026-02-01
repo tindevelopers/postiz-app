@@ -8,7 +8,7 @@ RUN find /app -name "subdomain.management.js" -type f -exec sed -i "s/return url
     echo "✅ Cookie domain patch applied for Railway PSL compatibility"
 
 # Create upload directory with proper permissions
-RUN mkdir -p /uploads /config && chmod 755 /uploads /config
+RUN mkdir -p /uploads /config /app/.cursor && chmod 755 /uploads /config /app/.cursor
 
 # Create a wrapper entrypoint that fixes the PORT conflict
 # Railway sets PORT for healthcheck, but Postiz backend also reads PORT
