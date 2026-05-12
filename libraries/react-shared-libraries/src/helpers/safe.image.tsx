@@ -16,6 +16,21 @@ const SafeImage: FC<SafeImageProps> = ({
   style,
   ...rest
 }) => {
+  let crossOriginReferrer: { referrerPolicy?: string } = {};
+  try {
+    if (
+      typeof window !== 'undefined' &&
+      (src.startsWith('http://') || src.startsWith('https://'))
+    ) {
+      const o = new URL(src).origin;
+      if (o !== window.location.origin) {
+        crossOriginReferrer = { referrerPolicy: 'no-referrer' };
+      }
+    }
+  } catch {
+    // keep defaults
+  }
+
   return (
     <img
       src={src}
@@ -24,6 +39,7 @@ const SafeImage: FC<SafeImageProps> = ({
       height={typeof height === 'number' ? height : undefined}
       className={className}
       style={style}
+      {...crossOriginReferrer}
     />
   );
 };

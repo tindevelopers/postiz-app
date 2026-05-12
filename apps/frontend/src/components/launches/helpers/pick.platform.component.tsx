@@ -283,7 +283,7 @@ export const PickPlatforms: FC<{
                       >
                         <div className="flex items-center justify-center gap-[10px]">
                           <div className="relative">
-                            <img
+                            <SafeImage
                               src={integration.picture || '/no-picture.jpg'}
                               className="rounded-full"
                               alt={integration.identifier}
